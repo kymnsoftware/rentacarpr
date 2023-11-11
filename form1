@@ -1,0 +1,1450 @@
+using System;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Data;
+using System.Drawing;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using System.Windows.Forms;
+using System.Data.SqlClient;
+using System.Globalization;
+using System.Threading;
+using DevExpress.XtraEditors;
+using DevExpress.XtraReports.UI;
+using DevExpress.DataAccess.Sql;
+using DevExpress.XtraReports.Parameters;
+using DevExpress.XtraGrid.Columns;
+using DevExpress.XtraPrinting.Preview;
+using System.IO;
+using System.Diagnostics;
+
+namespace RentaCarManagementSystem
+{
+    public partial class Form1 : XtraForm
+    {
+        sqlbaglantisi bgl = new sqlbaglantisi();
+
+        public Form1()
+        {
+            CheckForIllegalCrossThreadCalls = false;
+            InitializeComponent();
+
+        }
+        void hk_table()
+        {
+            MusteriListele();
+            GüncelTabloListele();
+            RezervasyonOlustur();
+           // KiralamaOlustur();
+            
+        }
+        void hk_table_two()
+        {
+            AraclariListele();
+            KasaListele();
+            AracGiderListele();
+            GelirGiderListele();
+        }
+        private void MusteriListele()
+        {
+            DataTable dt = new DataTable();
+            SqlDataAdapter da = new SqlDataAdapter("SELECT * FROM tbl_musteriler", bgl.baglanti());
+            da.Fill(dt);
+            gridControl1.DataSource = dt;
+            gridView1.Columns[0].Visible = false;
+            gridView1.Columns[1].Caption = "Adı Soyadı";
+            gridView1.Columns[2].Caption = "Telefon No";
+            gridView1.Columns[3].Caption = "Kimlik No";
+            gridView1.Columns[4].Caption = "Ehliyet No";
+            gridView1.Columns[5].Caption = "Adresi";
+            gridView1.Columns[6].Caption = "D.Yeri";
+            gridView1.Columns[7].Caption = "E.Sınıf";
+            gridView1.Columns[8].Caption = "D.Tarihi";
+            gridView1.Columns[9].Caption = "Şehir";
+            gridView1.Columns[10].Caption = "İlçe";
+
+        }
+        private void KiralamaOlustur()
+        {
+            DataSet dt2 = new DataSet();
+            SqlDataAdapter da2 = new SqlDataAdapter("SELECT aracid,plaka FROM tbl_araclar WHERE durum='Müsait'", bgl.baglanti());
+            da2.Fill(dt2, "plaka");
+            comboBox2.DataSource = dt2.Tables["plaka"];
+            comboBox2.DisplayMember = "plaka";
+            comboBox2.ValueMember = "aracid";
+            comboBox2.Text = "Seçiniz";
+
+            bgl.baglanti().Close();
+        }
+        private void RezervasyonOlustur()
+        {
+            DataTable dt = new DataTable();
+            SqlDataAdapter da = new SqlDataAdapter("SELECT rezID,rezAdiSoyadi,rezBasTarih,rezBitisTarih,rezTelNo,rezPlaka,rezFiyat,rezNot FROM tbl_rezervasyon", bgl.baglanti());
+            da.Fill(dt);
+            gridControl7.DataSource = dt;
+            bgl.baglanti().Close();
+            gridView7.Columns[0].Visible = false;
+            gridView7.Columns[1].Caption = "Adı Soyadı";
+            gridView7.Columns[2].Caption = "Çıkış Tarihi";
+            gridView7.Columns[3].Caption = "Dönüş Tarihi";
+            gridView7.Columns[4].Caption = "Telefon No";
+            gridView7.Columns[5].Caption = "Plaka";
+            gridView7.Columns[6].Caption = "Fiyat";
+            gridView7.Columns[7].Caption = "Not";
+        }
+
+        private void AraclariListele()
+        {
+            DataTable dt = new DataTable();
+            SqlDataAdapter da = new SqlDataAdapter("SELECT * FROM tbl_araclar", bgl.baglanti());
+            da.Fill(dt);
+            gridControl3.DataSource = dt;
+            bgl.baglanti().Close();
+            gridView3.Columns[0].Visible = false;
+        }
+        private void PlakalariListele()
+        {
+            DataTable dt = new DataTable();
+            SqlDataAdapter da = new SqlDataAdapter("SELECT * FROM tbl_plakalar", bgl.baglanti());
+            da.Fill(dt);
+            gridControl9.DataSource = dt;
+            bgl.baglanti().Close();
+        }
+        private void KasaListele()
+        {
+            /*
+            DataTable dataTable = new DataTable();
+            SqlDataAdapter da = new SqlDataAdapter("SELECT kasaTarih,kasaGelir,kasaGider,kasaNot FROM tbl_kasa", bgl.baglanti());
+            da.Fill(dataTable);
+            dataView = new DataView(dataTable);
+            gridControl6.DataSource = dataView;
+            bgl.baglanti().Close();
+            */
+            DateTime secilenTarih = dateTimePicker3.Value.Date; // DateTimePicker'dan seçilen tarihi alıyoruz ve sadece tarih kısmını alıyoruz (saat kısmını atıyoruz).
+            DataTable dt = new DataTable();
+            SqlDataAdapter da = new SqlDataAdapter("SELECT kasaid,kasaTarih,kasaGelir,kredikart,kasaGider,kasaNot FROM tbl_kasa WHERE kasaTarih = @p1", bgl.baglanti()); // Veritabanından sadece seçilen tarihe ait kayıtları çekecek şekilde WHERE koşulu eklenmiştir.
+            da.SelectCommand.Parameters.AddWithValue("@p1", secilenTarih); // WHERE koşulundaki parametreye değer atanmaktadır.
+            da.Fill(dt);
+            gridControl6.DataSource = dt;
+            bgl.baglanti().Close();
+
+        }
+        private void AracGiderListele()
+        {
+            DataTable dt = new DataTable();
+            SqlDataAdapter da = new SqlDataAdapter("SELECT tbl_araclar.aracid,tbl_arac_gider.arac_gider_id,tbl_arac_gider.arac_kilometre,tbl_arac_gider.arac_gider_aciklama,tbl_arac_gider.arac_gider,tbl_arac_gider.arac_gider_tarih FROM tbl_araclar INNER JOIN tbl_arac_gider ON tbl_araclar.aracid= tbl_arac_gider.aracid WHERE tbl_araclar.aracid='" + txtAracId.Text + "'", bgl.baglanti());
+            da.Fill(dt);
+
+            // Tabloyu tarih sütununa göre sırala
+            DataView dv = dt.DefaultView;
+            dv.Sort = "arac_gider_tarih DESC";
+            dt = dv.ToTable();
+
+            gridControl4.DataSource = dt;
+            bgl.baglanti().Close();
+            gridView4.Columns[0].Visible = false;
+            gridView4.Columns[1].Visible = false;
+
+        }
+        private void GüncelTabloListele()
+        {
+            DataTable dt = new DataTable();
+            SqlDataAdapter adapter = new SqlDataAdapter("SELECT tbl_araclar.plaka,tbl_araclar.aracModel,tbl_kiralama.donusTarihi,CONVERT(varchar(5), donusSaat, 108) as donusSaat,tbl_musteriler.musteriAdiSoyadi,tbl_musteriler.musteriTelNo FROM tbl_araclar INNER JOIN tbl_kiralama ON tbl_araclar.aracid = tbl_kiralama.aracid INNER JOIN tbl_musteriler ON tbl_musteriler.mid = tbl_kiralama.mid", bgl.baglanti());
+            adapter.Fill(dt);
+            gridControl5.DataSource = dt;
+            bgl.baglanti().Close();
+            gridView5.Columns[0].Caption = "Plaka";
+            gridView5.Columns[1].Caption = "Modeli";
+            gridView5.Columns[2].Caption = "Dönüş Tarihi";
+            gridView5.Columns[3].Caption = "Dönüş Saati";
+            gridView5.Columns[4].Caption = "Adı Soyadı";
+            gridView5.Columns[5].Caption = "Telefon No";
+        }
+        private void GelirGiderListele()
+        {
+            SqlCommand komut = new SqlCommand("Select Sum(kasaGider) From tbl_kasa Where kasaTarih=@p1", bgl.baglanti());
+            komut.Parameters.AddWithValue("@p1", dateTimePicker3.Value);
+            SqlDataReader dr1 = komut.ExecuteReader();
+            while (dr1.Read())
+            {
+                lblKasaGider.Text = dr1[0].ToString() + "TL";
+
+            }
+
+            bgl.baglanti().Close();
+            SqlCommand komut2 = new SqlCommand("Select Sum(kasaGelir) From tbl_kasa where kasaTarih=@p1", bgl.baglanti());
+            komut2.Parameters.AddWithValue("@p1", dateTimePicker3.Value);
+            SqlDataReader dr2 = komut2.ExecuteReader();
+            while (dr2.Read())
+            {
+                lblKasaGelir.Text = dr2[0].ToString() + "TL";
+            }
+
+            SqlCommand komut3 = new SqlCommand("Select Sum(kasaGelir)- Sum(KasaGider) From tbl_kasa where kasaTarih=@p1", bgl.baglanti());
+            komut3.Parameters.AddWithValue("@p1", dateTimePicker3.Value);
+            SqlDataReader dr3 = komut3.ExecuteReader();
+            while (dr3.Read())
+            {
+                lblKasaDurum.Text = dr3[0].ToString() + "TL";
+            }
+
+            SqlCommand komut4 = new SqlCommand("Select Sum(kasaGelir) - Sum(KasaGider) From tbl_kasa where kasaTarih=@p1", bgl.baglanti());
+            komut4.Parameters.AddWithValue("@p1", dateTimePicker3.Value.AddDays(-1));
+            SqlDataReader dr4 = komut4.ExecuteReader();
+            while (dr4.Read())
+            {
+                lblbironcekigun.Text = dr4[0].ToString() + "TL";
+            }
+
+
+            bgl.baglanti().Close();
+        }
+        private void DegerlendirmeListele()
+        {
+            DataTable dt = new DataTable();
+            SqlDataAdapter da = new SqlDataAdapter("SELECT tbl_musteriler.mid,tbl_degerlendirme.did,tbl_degerlendirme.dMusteriAdiSoyadi,tbl_degerlendirme.dCikisTarihi,tbl_degerlendirme.dDonusTarihi,tbl_degerlendirme.dPlaka,tbl_degerlendirme.dFiyat,tbl_degerlendirme.dDegerlendirme FROM tbl_musteriler INNER JOIN tbl_degerlendirme ON tbl_musteriler.mid=tbl_degerlendirme.mid WHERE tbl_musteriler.mid='" + dmidText.Text + "'", bgl.baglanti());          
+            da.Fill(dt);
+            gridControl8.DataSource = dt;
+            bgl.baglanti().Close();
+            gridView8.Columns[0].Visible = false;
+            gridView8.Columns[1].Caption = "Müşteri Adı";
+        }
+        private void blackListLitele()
+        {
+            DataTable dt = new DataTable();
+            SqlDataAdapter da = new SqlDataAdapter("SELECT * FROM tbl_blacklist", bgl.baglanti());
+            da.Fill(dt);
+            gridControl10.DataSource = dt;
+            bgl.baglanti().Close();
+        }
+        void clearAllTools()
+        {
+            txtMid.Text = "";
+            txtMusteriAdi.Text = "";
+            txtMusteriAdres.Text = "";
+            txtMusteriDogumYeri.Text = "";
+            txtMusteriEhliyetNo.Text = "";
+            txtMusteriEhliyetSinif.Text = "";
+            txtMusteriKimlikNo.Text = "";
+            txtMusteriTelefon.Text = "";
+            musteriDgTarihi.Text = "";
+            aracGiderNot.Text = "";
+            aracGiderFiyat.Text = "";
+            aracGiderKilometre.Text = "";
+            kiraAdiSoyadi.Text = "";
+            kiraAdres.Text = "";
+            kiraDogumYer.Text = "";
+            kiraTel.Text = "";
+            kiraEhliyetNo.Text = "";
+            kiraEhliyetSinif.Text = "";
+            kiraKimlikNo.Text = "";
+            maskedTextBox2.Text = "";
+            kirail.Text = "";
+            kirailce.Text = "";
+            kiraAdres.Text = "";
+            rezAdiSoyadi.Text = "";
+            rezAdress.Text = "";
+            rezEhliyetNo.Text = "";
+            rezKimlikNo.Text = "";
+            rezSinif.Text = "";
+            rezIlce.Text = "";
+            rezIl.Text = "";
+            rezDogumTarihi.Text = "";
+            rezDogumYeri.Text = "";
+        }
+
+        private void Form1_Load(object sender, EventArgs e)
+        {
+            dateTimePicker3.Value = DateTime.Now.Date;
+            dateTimePicker1.Value = DateTime.Now.Date;
+            dateEdit2.EditValue = DateTime.Now.Date;
+            dateEdit1.EditValue = DateTime.Now.Date;
+            dateKiraCikis.EditValue = DateTime.Now;
+            dateKiraDonus.EditValue = DateTime.Now;
+            new Thread(new ThreadStart(hk_table)).Start();
+            new Thread(new ThreadStart(hk_table_two)).Start();
+            clearAllTools();
+            gridView5.ClearSelection();
+            gridView7.ClearSelection();
+            
+
+        }
+
+        private void barButtonItem3_ItemClick(object sender, DevExpress.XtraBars.ItemClickEventArgs e)
+        {
+
+        }
+
+        private void bn_anasayfa_ItemClick(object sender, DevExpress.XtraBars.ItemClickEventArgs e)
+        {
+            tablePanelMusteriKayit.Visible = false;
+            tablePanel1.Visible = false;
+            tableLayoutGuncelTablo.Visible = true;
+            tablePanel2.Visible = false;
+            tablePanelPlakaSorgu.Visible = false;
+            tablePanelBlackList.Visible = false;
+            tableSozlesmeler.Visible = false;
+        }
+
+        private void btnMusteriEkleme_Click(object sender, EventArgs e)
+        {
+            if (txtMusteriAdi.Text==""||txtMusteriKimlikNo.Text==""||txtMusteriTelefon.Text==""||txtMusteriEhliyetNo.Text==""||txtMusteriEhliyetSinif.Text==""||txtMusteriDogumYeri.Text==""||txtMusteriIl.Text==""||txtMusteriIlce.Text==""||txtMusteriAdres.Text=="")
+            {
+                MessageBox.Show("Lütfen Kayıt Formun boş alan bırakmayınız!");
+            }
+            else
+            {
+                SqlCommand denetle = new SqlCommand("select * from tbl_musteriler where musteriTelNo='" + txtMusteriTelefon.Text + "' OR musteriKimlikNo='" + txtMusteriKimlikNo.Text + "' OR musteriEhliyetNo='" + txtMusteriEhliyetNo.Text + "'", bgl.baglanti());
+                SqlDataAdapter dg = new SqlDataAdapter(denetle);
+                DataTable dt = new DataTable();
+                dg.Fill(dt);
+                if (dt.Rows.Count > 0)
+                {
+                    MessageBox.Show("Aynı Bilgilere kayıtlı müşteri mevcut");
+                }
+                else
+                {
+                    SqlCommand komut = new SqlCommand("insert into tbl_musteriler(musteriAdiSoyadi,musteriTelNo,musteriKimlikNo,musteriEhliyetNo,musteriAdres,musteriDogumYeri,musteriDogumTarihi,musteriEhliyetSinif,musteriSehir,musteriIlce) values (@p1,@p3,@p4,@p5,@p6,@p7,@p8,@p9,@p10,@p11)", bgl.baglanti());
+                    komut.Parameters.AddWithValue("@p1", txtMusteriAdi.Text);
+                    komut.Parameters.AddWithValue("@p3", txtMusteriTelefon.Text);
+                    komut.Parameters.AddWithValue("@p4", txtMusteriKimlikNo.Text);
+                    komut.Parameters.AddWithValue("@p5", txtMusteriEhliyetNo.Text);
+                    komut.Parameters.AddWithValue("@p6", txtMusteriAdres.Text);
+                    komut.Parameters.AddWithValue("@p7", txtMusteriDogumYeri.Text);
+                    komut.Parameters.AddWithValue("@p8", musteriDgTarihi.EditValue);
+                    komut.Parameters.AddWithValue("@p9", txtMusteriEhliyetSinif.Text);
+                    komut.Parameters.AddWithValue("@p10", txtMusteriIl.Text);
+                    komut.Parameters.AddWithValue("@p11", txtMusteriIlce.Text);
+
+                    MessageBox.Show("Müşteri Eklendi.", "Bilgi", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    komut.ExecuteNonQuery();
+                    bgl.baglanti().Close();
+                    MusteriListele();
+                    clearAllTools();
+                }
+            }
+        }
+
+        private void btnMusteriDuzenle_Click(object sender, EventArgs e)
+        {
+            SqlCommand komut = new SqlCommand("update tbl_musteriler set musteriAdiSoyadi=@p1,musteriTelNo=@p3,musteriKimlikNo=@p4,musteriEhliyetNo=@p5,musteriAdres=@p6,musteriDogumYeri=@p7,musteriDogumTarihi=@p9,musteriEhliyetSinif=@p10,musteriSehir=@p11,musteriIlce=@p12 where mid=@p8", bgl.baglanti());
+            komut.Parameters.AddWithValue("@p1", txtMusteriAdi.Text);
+            komut.Parameters.AddWithValue("@p3", txtMusteriTelefon.Text);
+            komut.Parameters.AddWithValue("@p4", txtMusteriKimlikNo.Text);
+            komut.Parameters.AddWithValue("@p5", txtMusteriEhliyetNo.Text);
+            komut.Parameters.AddWithValue("@p6", txtMusteriAdres.Text);
+            komut.Parameters.AddWithValue("@p7", txtMusteriDogumYeri.Text);
+            komut.Parameters.AddWithValue("@p8", txtMid.Text);
+            komut.Parameters.AddWithValue("@p9", musteriDgTarihi.EditValue);
+            komut.Parameters.AddWithValue("@p10", txtMusteriEhliyetSinif.Text);
+            komut.Parameters.AddWithValue("@p11", txtMusteriIl.Text);
+            komut.Parameters.AddWithValue("@p12", txtMusteriIlce.Text);
+            komut.ExecuteNonQuery();
+            MessageBox.Show("Müşteri Bilgileri Güncellendi.", "Bilgi", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            MusteriListele();
+            txtMusteriAdi.Text = "";
+            txtMusteriTelefon.Text = "";
+            txtMusteriKimlikNo.Text = "";
+            txtMusteriEhliyetNo.Text = "";
+            txtMusteriAdres.Text = "";
+            txtMusteriDogumYeri.Text = "";
+            txtMid.Text = "";
+        }
+
+        private void gridView1_FocusedRowChanged(object sender, DevExpress.XtraGrid.Views.Base.FocusedRowChangedEventArgs e)
+        {
+            
+                DataRow dr = gridView1.GetDataRow(gridView1.FocusedRowHandle);
+                if (dr != null)
+                {
+                    txtMid.Text = dr[0].ToString();
+                    txtMusteriAdi.Text = dr[1].ToString();
+                    txtMusteriTelefon.Text = dr[2].ToString();
+                    txtMusteriKimlikNo.Text = dr[3].ToString();
+                    txtMusteriEhliyetNo.Text = dr[4].ToString();
+                    txtMusteriAdres.Text = dr[5].ToString();
+                    txtMusteriDogumYeri.Text = dr[6].ToString();
+                    txtMusteriEhliyetSinif.Text = dr[7].ToString();
+                    txtMusteriIl.Text = dr[9].ToString();
+                    txtMusteriIlce.Text = dr[10].ToString();
+                    DateTime dateTime = (DateTime)dr[8];
+                    musteriDgTarihi.EditValue = dateTime.Date;
+
+
+                    kiralamaMid.Text = dr[0].ToString();
+                    kiraAdiSoyadi.Text = dr[1].ToString();
+                    kiraTel.Text = dr[2].ToString();
+                    kiraKimlikNo.Text = dr[3].ToString();
+                    kiraEhliyetNo.Text = dr[4].ToString();
+                    kiraAdres.Text = dr[5].ToString();
+                    kiraDogumYer.Text = dr[6].ToString();
+                    kiraEhliyetSinif.Text = dr[7].ToString();
+                    kirail.Text = dr[9].ToString();
+                    kirailce.Text = dr[10].ToString();
+                    maskedTextBox2.Text = dr[8].ToString();
+
+                    rezID.Text = dr[0].ToString();
+                    rezAdiSoyadi.Text = dr[1].ToString();
+                    rezTelNo.Text = dr[2].ToString();
+                    rezKimlikNo.Text = dr[3].ToString();
+                    rezEhliyetNo.Text = dr[4].ToString();
+                    rezAdress.Text = dr[5].ToString();
+                    rezDogumYeri.Text = dr[6].ToString();
+                    rezSinif.Text = dr[7].ToString();
+                    rezIl.Text = dr[9].ToString();
+                    rezIlce.Text = dr[10].ToString();
+                    rezDogumTarihi.Text = dr[8].ToString();
+
+                dmidText.Text = dr[0].ToString();
+
+
+                }
+        }
+        int FiyatGunCarp;
+        int KiralamaFiyati;
+        private void btnKiralamaOlustur_Click(object sender, EventArgs e)
+        {
+            if (kiraCikisYeri.Text == "" || kiraDonusYeri.Text == "" || dateKiraCikis.Text == "" || dateKiraDonus.Text == "" || maskedTextBox1.Text == "" || kiraFiyat.Text == "" || comboBox1.Text == "" || lblKiraAracPlaka.Text == "Araç :" || maskedTextBox1.Text == "")
+            {
+                MessageBox.Show("Lütfen boş alanları doldurunuz!");
+                if (lblKiraAracPlaka.Text== "Araç :")
+                {
+                    MessageBox.Show("Araç plakasını tekrar girin");
+                }
+            }
+            else
+            {
+
+                KiralamaFiyati = Convert.ToInt32(kiraFiyat.Text);
+                labelControl68.Text = KiralamaFiyati.ToString();
+                FiyatGunCarp = KiralamaFiyati * gunSayisi;
+                labelControl69.Text = FiyatGunCarp.ToString();
+
+                SqlCommand komut = new SqlCommand("insert into tbl_kiralama(mid,cikisYeri,donusYeri,cikisTarihi,donusTarihi,aracplaka,aracFiyat,aracid,donusSaat) values (@p1,@p2,@p3,@p4,@p5,@p6,@p7,@p8,CAST(@p9 as time))", bgl.baglanti());
+                komut.Parameters.AddWithValue("@p1", kiralamaMid.Text);
+                komut.Parameters.AddWithValue("@p2", kiraCikisYeri.Text);
+                komut.Parameters.AddWithValue("@p3", kiraDonusYeri.Text);
+                komut.Parameters.AddWithValue("@p4", dateKiraCikis.EditValue);
+                komut.Parameters.AddWithValue("@p5", dateKiraDonus.EditValue);
+                komut.Parameters.AddWithValue("@p6", lblKiraAracPlaka.Text);
+                komut.Parameters.AddWithValue("@p7", labelControl69.Text);
+                komut.Parameters.AddWithValue("@p8", kiraAracIdLbL.Text);
+                komut.Parameters.AddWithValue("@p9", DateTime.ParseExact(maskedTextBox1.Text, "HH:mm", CultureInfo.InvariantCulture).TimeOfDay);
+
+                if (checkNakit.Checked==true)
+                {
+                    SqlCommand komutKasa = new SqlCommand("insert into tbl_kasa(kasaGelir,kasaTarih,kasaNot) values(@p1,@p2,@p3)", bgl.baglanti());
+                    komutKasa.Parameters.AddWithValue("@p1", labelControl69.Text);
+                    komutKasa.Parameters.AddWithValue("@p2", dateKiraCikis.EditValue);
+                    komutKasa.Parameters.AddWithValue("@p3", lblKiraAracPlaka.Text + " Araç Kira Ücreti");
+                    komutKasa.ExecuteNonQuery();
+                }
+                if (checkKart.Checked==true)
+                {
+                    SqlCommand komutKasa = new SqlCommand("insert into tbl_kasa(kredikart,kasaTarih,kasaNot) values(@p1,@p2,@p3)", bgl.baglanti());
+                    komutKasa.Parameters.AddWithValue("@p1", labelControl69.Text);
+                    komutKasa.Parameters.AddWithValue("@p2", dateKiraCikis.EditValue);
+                    komutKasa.Parameters.AddWithValue("@p3", lblKiraAracPlaka.Text + " Araç Kira Ücreti");
+                    komutKasa.ExecuteNonQuery();
+                }
+                SqlCommand komutDegerlendirme = new SqlCommand("insert into tbl_degerlendirme(mid,dMusteriAdiSoyadi,dCikisTarihi,dDonusTarihi,dFiyat,dPlaka)values(@p1,@p2,@p3,@p4,@p5,@p6)", bgl.baglanti());
+                komutDegerlendirme.Parameters.AddWithValue("@p1", kiralamaMid.Text);
+                komutDegerlendirme.Parameters.AddWithValue("@p2", kiraAdiSoyadi.Text);
+                komutDegerlendirme.Parameters.AddWithValue("@p3", dateKiraCikis.EditValue);
+                komutDegerlendirme.Parameters.AddWithValue("@p4", dateKiraDonus.EditValue);
+                komutDegerlendirme.Parameters.AddWithValue("@p5", labelControl69.Text);
+                komutDegerlendirme.Parameters.AddWithValue("@p6", lblKiraAracPlaka.Text);
+                komutDegerlendirme.ExecuteNonQuery();
+
+                SqlCommand komut2 = new SqlCommand("update tbl_araclar set durum=@p18 where aracid=@p19", bgl.baglanti());
+
+                komut2.Parameters.AddWithValue("@p18", lblkkkkira.Text);
+                komut2.Parameters.AddWithValue("@p19", kiraAracIdLbL.Text);
+                komut2.ExecuteNonQuery();
+
+                SqlCommand pkomut = new SqlCommand("insert into tbl_plakalar(plaka,cikisTarihi,donusTarihi,donusSaati,musteriAdiSoyadi,telefonNo) values (@p1,@p2,@p3,@p4,@p5,@p6)", bgl.baglanti());
+                pkomut.Parameters.AddWithValue("@p1", lblKiraAracPlaka.Text);
+                pkomut.Parameters.AddWithValue("@p2", dateKiraCikis.EditValue);
+                pkomut.Parameters.AddWithValue("@p4", DateTime.ParseExact(maskedTextBox1.Text, "HH:mm", CultureInfo.InvariantCulture).TimeOfDay);
+                pkomut.Parameters.AddWithValue("@p3", dateKiraDonus.EditValue);
+                pkomut.Parameters.AddWithValue("@p5", kiraAdiSoyadi.Text);
+                pkomut.Parameters.AddWithValue("@p6", kiraTel.Text);
+                pkomut.ExecuteNonQuery();
+               // report.Parameters["premarks"].Value = richTextBox3.Text;
+                MessageBox.Show("Kiralama Oluşturuldu.", "Bilgi", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                komut.ExecuteNonQuery();
+                bgl.baglanti().Close();
+                GelirGiderListele();
+                KiralamaOlustur();
+                KasaListele();
+                AraclariListele();
+                GüncelTabloListele();
+            }
+        }
+
+        private void comboBox2_SelectionChangeCommitted(object sender, EventArgs e)
+        {
+            kiraAracIdLbL.Text = comboBox2.GetItemText(comboBox2.SelectedValue);
+            lblKiraAracPlaka.Text = comboBox2.GetItemText(comboBox2.SelectedItem);
+        }
+
+        private void simpleButton1_Click(object sender, EventArgs e)
+        {
+            SqlCommand komut = new SqlCommand("insert into tbl_araclar(aracModel,plaka,durum,fiyat,kilometre,bakimTarihi) values (@p1,@p2,@p3,@p4,@p5,@p6)", bgl.baglanti());
+            komut.Parameters.AddWithValue("@p1", txt_AracModeli.Text);
+            komut.Parameters.AddWithValue("@p2", txtAracPlaka.Text);
+            komut.Parameters.AddWithValue("@p3", labelControl50.Text);
+            komut.Parameters.AddWithValue("@p4", decimal.Parse(txtAracFiyat.Text));
+            komut.Parameters.AddWithValue("@p5", decimal.Parse(txtAracKilometre.Text));
+            komut.Parameters.AddWithValue("@p6", dateTimeBakimTarihi.EditValue);
+            MessageBox.Show("Araç Eklendi.", "Bilgi", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            komut.ExecuteNonQuery();
+            bgl.baglanti().Close();
+            AraclariListele();
+        }
+
+        private void gridView3_FocusedRowChanged(object sender, DevExpress.XtraGrid.Views.Base.FocusedRowChangedEventArgs e)
+        {
+            /*
+            DataRow dr = gridView3.GetDataRow(gridView3.FocusedRowHandle);
+            if (dr != null)
+            {
+                txtAracId.Text = dr[0].ToString();
+                txt_AracModeli.Text = dr[1].ToString();
+                lblAracModeli.Text = dr[1].ToString();
+                txtAracPlaka.Text = dr[2].ToString();
+                lblAracPlaka.Text = dr[2].ToString();
+                comboAracDurum.Text = dr[3].ToString();
+                txtAracFiyat.Text = dr[4].ToString();
+                txtAracKilometre.Text = dr[5].ToString();
+
+                DateTime dateTime = (DateTime)dr[6];
+                dateTimeBakimTarihi.EditValue = dateTime.Date;
+                AracGiderListele();
+
+            }
+            */
+        }
+
+        private void btnAracDuzenle_Click(object sender, EventArgs e)
+        {
+            SqlCommand komut = new SqlCommand("update tbl_araclar set aracModel=@p1,plaka=@p2,durum=@p3,fiyat=@p4,kilometre=@p5,bakimTarihi=@p6 where aracid=@p7", bgl.baglanti());
+            komut.Parameters.AddWithValue("@p1", txt_AracModeli.Text);
+            komut.Parameters.AddWithValue("@p2", txtAracPlaka.Text);
+            komut.Parameters.AddWithValue("@p3", comboAracDurum.Text);
+            komut.Parameters.AddWithValue("@p4", decimal.Parse(txtAracFiyat.Text));
+            komut.Parameters.AddWithValue("@p5", decimal.Parse(txtAracKilometre.Text));
+            komut.Parameters.AddWithValue("@p6", dateTimeBakimTarihi.EditValue);
+            komut.Parameters.AddWithValue("@p7", int.Parse(txtAracId.Text));
+            komut.ExecuteNonQuery();
+            MessageBox.Show("Araç Bilgileri Güncellendi.", "Bilgi", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            AraclariListele();
+        }
+
+        private void btnAracGiderKaydet_Click(object sender, EventArgs e)
+        {
+
+            SqlCommand komut = new SqlCommand("insert into tbl_arac_gider(aracid,arac_gider_aciklama,arac_gider_tarih,arac_gider,arac_kilometre) values (@p1,@p2,@p3,@p4,@p5)", bgl.baglanti());
+            komut.Parameters.AddWithValue("@p1", txtAracId.Text);
+            komut.Parameters.AddWithValue("@p2", aracGiderNot.Text);
+            komut.Parameters.AddWithValue("@p3", aracGiderTarih.EditValue);
+            komut.Parameters.AddWithValue("@p4", decimal.Parse(aracGiderFiyat.Text));
+            komut.Parameters.AddWithValue("@p5", aracGiderKilometre.Text);
+
+            SqlCommand komutKasa = new SqlCommand("insert into tbl_kasa(kasaGider,kasaTarih,kasaNot) values (@p1,@p2,@p3)", bgl.baglanti());
+            komutKasa.Parameters.AddWithValue("@p1", decimal.Parse(aracGiderFiyat.Text));
+            komutKasa.Parameters.AddWithValue("@p2", aracGiderTarih.EditValue);
+            komutKasa.Parameters.AddWithValue("@p3", aracGiderNot.Text);
+            komutKasa.ExecuteNonQuery();
+
+            MessageBox.Show("Gider Eklendi.", "Bilgi", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            komut.ExecuteNonQuery();
+            bgl.baglanti().Close();
+            GelirGiderListele();
+            AracGiderListele();
+            aracGiderNot.Text = "";
+            aracGiderFiyat.Text = "";
+            aracGiderTarih.EditValue = DateTime.Now;
+        }
+
+        private void btn_musteriKayit_ItemClick(object sender, DevExpress.XtraBars.ItemClickEventArgs e)
+        {
+            tablePanelMusteriKayit.Visible = true;
+            clearAllTools();
+            tablePanel1.Visible = false;
+            tableLayoutGuncelTablo.Visible = false;
+            tablePanel2.Visible = false;
+            panelControlMusteriler.Visible = true;
+            panelControlKiralama.Visible = false;
+            panelControlRezervasyon.Visible = false;
+            panelControlDegerlendirme.Visible = false;
+            tablePanelPlakaSorgu.Visible = false;
+            tablePanelBlackList.Visible = false;
+            tableSozlesmeler.Visible = false;
+        }
+
+        private void btn_kiralamaolustur_ItemClick(object sender, DevExpress.XtraBars.ItemClickEventArgs e)
+        {
+            KiralamaOlustur();
+            clearAllTools();
+            tablePanelBlackList.Visible = false;
+            tablePanelMusteriKayit.Visible = true;
+            tablePanel1.Visible = false;
+            tableLayoutGuncelTablo.Visible = false;
+            tablePanel2.Visible = false;
+            panelControlKiralama.Visible = true;
+            panelControlMusteriler.Visible = false;
+            panelControlRezervasyon.Visible = false;
+            panelControlDegerlendirme.Visible = false;
+            tablePanelPlakaSorgu.Visible = false;
+            kiraFiyat.Text = "";
+            maskedTextBox1.Text = "";
+            tableSozlesmeler.Visible = false;
+
+        }
+
+        private void btn_araclar_ItemClick(object sender, DevExpress.XtraBars.ItemClickEventArgs e)
+        {
+            clearAllTools();
+            tablePanelMusteriKayit.Visible = false;
+            tablePanel1.Visible = true;
+            tableLayoutGuncelTablo.Visible = false;
+            tablePanel2.Visible = false;
+            tablePanelPlakaSorgu.Visible = false;
+            tablePanelBlackList.Visible = false;
+            tableSozlesmeler.Visible = false;
+        }
+        int donusSayaci = 0;
+        private void timer1_Tick(object sender, EventArgs e)
+        {
+            donusSayaci++;
+            label7.Text = DateTime.Now.ToString();
+            dateTimePicker2.Value.ToString();
+            dateTimePicker2.Value = DateTime.Parse(label7.Text);
+            timeEdit1.EditValue = DateTime.Now.ToLongTimeString();
+        }
+        int sorgu_sayi = 0;
+        private void timer2_Tick(object sender, EventArgs e)
+        {
+            /*
+            sorgu_sayi++;
+            if (sorgu_sayi == 11)
+            {
+                sorgu_sayi++;
+                SqlCommand komut3 = new SqlCommand("select aracPlaka,donusTarihi from tbl_kiralama where donusTarihi<@p1", bgl.baglanti());
+                komut3.Parameters.AddWithValue("@p1", dateTimePicker2.Value);
+                SqlDataReader read3 = komut3.ExecuteReader();
+                while (read3.Read())
+                {
+                    SqlCommand komut4 = new SqlCommand("select aracPlaka,donusSaat from tbl_kiralama where donusSaat<@p2", bgl.baglanti());
+                    komut4.Parameters.AddWithValue("@p2", timeEdit1.EditValue);
+                    SqlDataReader read4 = komut4.ExecuteReader();
+                    while (read4.Read())
+                    {
+                        MessageBox.Show(this, read4[0].ToString() + " Plaklı aracın süresi doldu güncel listeye bakın!");
+                    }
+                }
+
+            }
+            */
+            sorgu_sayi++;
+            if (sorgu_sayi == 11)
+            {
+                sorgu_sayi++;
+                SqlCommand komut3 = new SqlCommand("SELECT aracPlaka,donusTarihi,donusSaat FROM tbl_kiralama where donusTarihi < @p1 OR(donusTarihi = @p1 AND donusSaat <@p2)", bgl.baglanti());
+                komut3.Parameters.AddWithValue("@p1", dateTimePicker2.Value);
+                komut3.Parameters.AddWithValue("@p2", timeEdit1.EditValue);
+                SqlDataReader read3 = komut3.ExecuteReader();
+                while (read3.Read())
+                {
+                    MessageBox.Show(this, read3[0].ToString() + " Plaklı aracın süresi doldu güncel listeye bakın!");
+                    label8.Text = read3[2].ToString();
+                }
+            }
+            if (sorgu_sayi == 900)
+            {
+                sorgu_sayi = 0;
+            }
+        }
+
+        private void btn_GuncelTaboGuncelle_Click(object sender, EventArgs e)
+        {
+            
+        }
+
+        private void btn_Kasa_ItemClick(object sender, DevExpress.XtraBars.ItemClickEventArgs e)
+        {
+            tablePanelMusteriKayit.Visible = false;
+            tablePanelPlakaSorgu.Visible = false;
+            tablePanel1.Visible = false;
+            tableLayoutGuncelTablo.Visible = false;
+            tablePanel2.Visible = true;
+            tablePanelBlackList.Visible = false;
+            tableSozlesmeler.Visible = false;
+        }
+        private void dateTimePicker3_ValueChanged(object sender, EventArgs e)
+        {
+            
+        }
+        XtraReport1 report = new XtraReport1();
+        private void simpleButton1_Click_1(object sender, EventArgs e)
+        {
+            /*
+            string filterParam = kiralamaMid.Text;
+           
+            
+            report.FilterString = "[mid] = '" + filterParam + "'";
+            report.Parameters["musteriAdi2P"].Value = reportMusteri.Text;
+            report.Parameters["musteriKimlikNo2P"].Value = reportKimlikNo.Text;
+            report.Parameters["musteriEhliyetNo2P"].Value = reportEhliyetNo.Text;
+            report.Parameters["musteriTel2P"].Value = reportTelNo.Text;
+            report.Parameters["musteriDogumTarih2P"].Value = reportDogumTarihi.Text;
+            report.Parameters["musteriDogumYer"].Value = reportDogumYeri.Text;
+            report.Parameters["musteriEhliyetSinif2P"].Value = reportSinif.Text;
+            report.Parameters["premarks"].Value = richTextBox3.Text;
+            //report.Parameters["mid"].Value = "3";
+            // report.ShowPreviewDialog();
+            using (PrintPreviewFormEx printPreview = new PrintPreviewFormEx())
+            {
+                printPreview.PrintingSystem = report.PrintingSystem;
+                report.CreateDocument();
+                printPreview.ShowDialog();
+            }
+
+            using (System.IO.MemoryStream ms = new MemoryStream())
+            {
+                report.ExportToPdf(ms); // Raporu PDF olarak MemoryStream'e aktar
+
+                byte[] pdfBytes = ms.ToArray(); // MemoryStream'i byte dizisine dönüştür
+
+                DataTable dt = new DataTable();
+                SqlDataAdapter da = new SqlDataAdapter("SELECT * FROM tbl_raporlar", bgl.baglanti());
+                da.Fill(dt);
+
+                // Yeni bir satır oluştur ve verileri doldur
+                DateTime kiraCikisTarihi = Convert.ToDateTime(dateKiraCikis.EditValue); // dateKiraCikis, DateTime değerini seçtiğiniz kontrolün adıdır. Gerekirse uygun şekilde değiştirin.
+
+                string raporAdi = kiraCikisTarihi.ToString("dd.MM.yyyy") + " "+lblKiraAracPlaka.Text; // Rapor adını istediğiniz formatta oluşturun, burada yıl, ay ve gün bilgilerini kullanıyoruz.
+
+                DataRow newRow = dt.NewRow();
+                newRow["RaporAdi"] = raporAdi; // Rapor adını istediğiniz gibi değiştirin
+                newRow["PdfData"] = pdfBytes; // PDF byte dizisini "PdfData" sütununa ata
+                dt.Rows.Add(newRow);
+
+                SqlCommandBuilder cb = new SqlCommandBuilder(da);
+                da.Update(dt); // Değişiklikleri veritabanına kaydet
+
+                bgl.baglanti().Close();
+
+            }
+            */
+            /*
+            string filterParam = kiralamaMid.Text;
+
+            report.FilterString = "[mid] = '" + filterParam + "'";
+            report.Parameters["musteriAdi2P"].Value = reportMusteri.Text;
+            report.Parameters["musteriKimlikNo2P"].Value = reportKimlikNo.Text;
+            report.Parameters["musteriEhliyetNo2P"].Value = reportEhliyetNo.Text;
+            report.Parameters["musteriTel2P"].Value = reportTelNo.Text;
+            report.Parameters["musteriDogumTarih2P"].Value = reportDogumTarihi.Text;
+            report.Parameters["musteriDogumYer"].Value = reportDogumYeri.Text;
+            report.Parameters["musteriEhliyetSinif2P"].Value = reportSinif.Text;
+            report.Parameters["premarks"].Value = richTextBox3.Text;
+            using (PrintPreviewFormEx printPreview = new PrintPreviewFormEx())
+            {
+                printPreview.PrintingSystem = report.PrintingSystem;
+                report.CreateDocument();
+                printPreview.ShowDialog();
+            }
+
+            using (MemoryStream ms = new MemoryStream())
+            {
+                report.ExportToPdf(ms); // Raporu PDF olarak MemoryStream'e aktar
+
+                byte[] pdfBytes = ms.ToArray(); // MemoryStream'i byte dizisine dönüştür
+
+                using (SqlConnection connection = new SqlConnection("Data Source=185.59.31.180;user=sa;password=376129812Aa;Initial Catalog=rentacar;"))
+                {
+                    connection.Open();
+
+                    // Yeni bir satır oluştur ve verileri doldur
+                    DateTime kiraCikisTarihi = Convert.ToDateTime(dateKiraCikis.EditValue); // dateKiraCikis, DateTime değerini seçtiğiniz kontrolün adıdır. Gerekirse uygun şekilde değiştirin.
+
+                    string raporAdi = kiraCikisTarihi.ToString("dd.MM.yyyy") + " " + lblKiraAracPlaka.Text; // Rapor adını istediğiniz formatta oluşturun
+
+                    SqlCommand command = new SqlCommand("INSERT INTO tbl_raporlar (RaporAdi, PdfData) VALUES (@raporAdi, @pdfData)", connection);
+                    command.Parameters.AddWithValue("@raporAdi", raporAdi);
+                    command.Parameters.AddWithValue("@pdfData", pdfBytes);
+                    command.ExecuteNonQuery();
+
+                    connection.Close();
+                }
+            }
+            */
+
+            Task.Run(() =>
+            {
+                string filterParam = kiralamaMid.Text;
+
+                report.FilterString = "[mid] = '" + filterParam + "'";
+                report.Parameters["musteriAdi2P"].Value = reportMusteri.Text;
+                report.Parameters["musteriKimlikNo2P"].Value = reportKimlikNo.Text;
+                report.Parameters["musteriEhliyetNo2P"].Value = reportEhliyetNo.Text;
+                report.Parameters["musteriTel2P"].Value = reportTelNo.Text;
+                report.Parameters["musteriDogumTarih2P"].Value = reportDogumTarihi.Text;
+                report.Parameters["musteriDogumYer"].Value = reportDogumYeri.Text;
+                report.Parameters["musteriEhliyetSinif2P"].Value = reportSinif.Text;
+                report.Parameters["premarks"].Value = richTextBox3.Text;
+                using (PrintPreviewFormEx printPreview = new PrintPreviewFormEx())
+                {
+                    printPreview.PrintingSystem = report.PrintingSystem;
+                    report.CreateDocument();
+                    printPreview.ShowDialog();
+                }
+                using (MemoryStream ms = new MemoryStream())
+                {
+                    report.ExportToPdf(ms); // Raporu PDF olarak MemoryStream'e aktar
+
+                    byte[] pdfBytes = ms.ToArray(); // MemoryStream'i byte dizisine dönüştür
+
+                    using (SqlConnection connection = new SqlConnection("Data Source=193.164.5.55;user=sa;password=123456789Aa;Initial Catalog=rentacar;Max Pool Size=10000;"))
+                    {
+                        connection.Open();
+
+                        // Yeni bir satır oluştur ve verileri doldur
+                        DateTime kiraCikisTarihi = Convert.ToDateTime(dateKiraCikis.EditValue); // dateKiraCikis, DateTime değerini seçtiğiniz kontrolün adıdır. Gerekirse uygun şekilde değiştirin.
+
+                        string raporAdi = kiraCikisTarihi.ToString("dd.MM.yyyy") + " " + lblKiraAracPlaka.Text; // Rapor adını istediğiniz formatta oluşturun
+
+                        SqlCommand command = new SqlCommand("INSERT INTO tbl_raporlar (RaporAdi, PdfData,Tarih) VALUES (@raporAdi, @pdfData, @tarih)", connection);
+                        command.Parameters.AddWithValue("@raporAdi", raporAdi);
+                        command.Parameters.AddWithValue("@pdfData", pdfBytes);
+                        command.Parameters.AddWithValue("@tarih", kiraCikisTarihi);
+                        command.ExecuteNonQuery();
+
+                        connection.Close();
+                    }
+                }
+            }).ContinueWith(task =>
+            {
+                if (task.Exception != null)
+                {
+                    // Hata durumunda yapılacak işlemler
+                    MessageBox.Show("Hata oluştu: " + task.Exception.Message);
+                }
+                else
+                {
+                    // İşlem başarıyla tamamlandıysa yapılacak işlemler
+                    MessageBox.Show("Sözleşme veritabanına kaydedildi.");
+                }
+            }, TaskScheduler.FromCurrentSynchronizationContext());
+
+
+        }
+
+        private void groupControl5_CustomButtonClick(object sender, DevExpress.XtraBars.Docking2010.BaseButtonEventArgs e)
+        {
+            SqlCommand komut2 = new SqlCommand("UPDATE tbl_araclar SET durum='Müsait' FROM tbl_araclar INNER JOIN tbl_kiralama ON tbl_araclar.aracid = tbl_kiralama.aracid WHERE tbl_kiralama.donusTarihi < @p2", bgl.baglanti());
+            komut2.Parameters.AddWithValue("@p2", dateTimePicker2.Value);
+            komut2.ExecuteNonQuery();
+
+
+            SqlCommand komut = new SqlCommand("DELETE From tbl_kiralama where donusTarihi < @p1", bgl.baglanti());
+            komut.Parameters.AddWithValue("@p1", dateTimePicker2.Value);
+            komut.ExecuteNonQuery();
+
+            bgl.baglanti().Close();
+            AraclariListele();
+            GüncelTabloListele();
+        }
+
+        private void barButtonItem4_ItemClick(object sender, DevExpress.XtraBars.ItemClickEventArgs e)
+        {
+            clearAllTools();
+            tablePanelMusteriKayit.Visible = true;
+            tablePanel1.Visible = false;
+            tableLayoutGuncelTablo.Visible = false;
+            tablePanel2.Visible = false;
+            panelControlKiralama.Visible = false;
+            panelControlMusteriler.Visible = false;
+            panelControlRezervasyon.Visible = true;
+            panelControlDegerlendirme.Visible = false;
+            tablePanelPlakaSorgu.Visible = false;
+            tablePanelBlackList.Visible = false;
+            tableSozlesmeler.Visible = false;
+        }
+
+        private void simpleButton4_Click(object sender, EventArgs e)
+        {
+            groupControl2.Visible = false;
+            checkBox1.Checked = false;
+        }
+
+        private void checkBox1_CheckedChanged(object sender, EventArgs e)
+        {
+            if (checkBox1.Checked==true)
+            {
+                groupControl2.Visible = true;
+            }
+            if (checkBox1.Checked==false)
+            {
+                groupControl2.Visible = false;
+                reportMusteri.Text = "";
+                reportKimlikNo.Text = "";
+                reportTelNo.Text = "";
+                reportEhliyetNo.Text = "";
+                reportDogumYeri.Text = "";
+                reportDogumTarihi.Text = "";
+                reportSinif.Text = "";
+            }
+        }
+
+        private void simpleButton5_Click(object sender, EventArgs e)
+        {
+            groupControl2.Visible = false;
+        }
+
+        private void simpleButton3_Click(object sender, EventArgs e)
+        {
+            SqlCommand komut = new SqlCommand("insert into tbl_rezervasyon(rezAdiSoyadi,rezBasTarih,rezBitisTarih,rezTelNo,rezPlaka,rezFiyat,rezNot) values (@p1,@p2,@p3,@p4,@p5,@p6,@p7)", bgl.baglanti());
+            komut.Parameters.AddWithValue("@p1", rezAdiSoyadi.Text);
+            komut.Parameters.AddWithValue("@p2", rezCikisTarihi.EditValue);
+            komut.Parameters.AddWithValue("@p3", rezDonusTarihi.EditValue);
+            komut.Parameters.AddWithValue("@p4", rezTelNo.Text);
+            komut.Parameters.AddWithValue("@p5", label14.Text);
+            komut.Parameters.AddWithValue("@p6", rezFiyat.Text);
+            komut.Parameters.AddWithValue("@p7", rezNotTxt.Text);
+            MessageBox.Show("Rezervasyon Oluşturuldu.", "Bilgi", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            komut.ExecuteNonQuery();
+            RezervasyonOlustur();
+            bgl.baglanti().Close();
+        }
+
+        private void simpleButton6_Click(object sender, EventArgs e)
+        {
+           
+        }
+
+        private void Form1_FormClosing(object sender, FormClosingEventArgs e)
+        {
+            Application.Exit();
+        }
+
+        private void btn_degerlendirme_Click(object sender, EventArgs e)
+        {
+            DegerlendirmeListele();
+        }
+
+        private void btn_musteriDegerlendirme_ItemClick(object sender, DevExpress.XtraBars.ItemClickEventArgs e)
+        {
+            tablePanelMusteriKayit.Visible = true;
+            tablePanel1.Visible = false;
+            tableLayoutGuncelTablo.Visible = false;
+            tablePanel2.Visible = false;
+            panelControlKiralama.Visible = false;
+            panelControlMusteriler.Visible = false;
+            panelControlRezervasyon.Visible = false;
+            panelControlDegerlendirme.Visible = true;
+            tablePanelPlakaSorgu.Visible = false;
+            tablePanelBlackList.Visible = false;
+            tableSozlesmeler.Visible = false;
+
+        }
+
+        private void gridView8_FocusedRowChanged(object sender, DevExpress.XtraGrid.Views.Base.FocusedRowChangedEventArgs e)
+        {
+            DataRow dr = gridView8.GetDataRow(gridView8.FocusedRowHandle);
+            if (dr != null)
+            {
+                txtdid.Text = dr[1].ToString();
+                txtDadi.Text = dr[2].ToString();
+                DateTime dateTime = (DateTime)dr[3];
+                dateEdit5.EditValue = dateTime.Date;
+                txtDplaka.Text = dr[5].ToString();
+                txtDfiyat.Text = dr[6].ToString();
+                richTextBox1.Text = dr[7].ToString();
+            }
+        }
+
+        private void btn_PlakaAra_Click(object sender, EventArgs e)
+        {
+            string sql = "select * from tbl_plakalar where plaka=@p3 AND donusTarihi between @p1 and @p2";
+            DataTable tbl = new DataTable();
+            SqlDataAdapter adtr = new SqlDataAdapter(sql, bgl.baglanti());
+            adtr.SelectCommand.Parameters.Add("@p1", SqlDbType.Date).Value = dateEdit1.EditValue;
+            adtr.SelectCommand.Parameters.Add("@p2", SqlDbType.Date).Value = dateEdit2.EditValue;
+            adtr.SelectCommand.Parameters.Add("@p3", SqlDbType.NChar).Value = labelplakax.Text;
+            adtr.Fill(tbl);
+            gridControl9.DataSource = tbl;
+        }
+
+        private void barButtonItem5_ItemClick(object sender, DevExpress.XtraBars.ItemClickEventArgs e)
+        {
+            tableSozlesmeler.Visible = false;
+            tablePanelPlakaSorgu.Visible = true;
+            tableLayoutGuncelTablo.Visible = false;
+            tablePanel1.Visible = false;
+            tablePanel2.Visible = false;
+            tablePanel3.Visible = false;
+            tablePanelMusteriKayit.Visible = false;
+        }
+
+        private void btn_blackList_ItemClick(object sender, DevExpress.XtraBars.ItemClickEventArgs e)
+        {
+            blackListLitele();
+            tablePanelMusteriKayit.Visible = false;
+            tablePanelPlakaSorgu.Visible = false;
+            tablePanel1.Visible = false;
+            tableLayoutGuncelTablo.Visible = false;
+            tablePanel2.Visible = false;
+            tablePanelBlackList.Visible = true;
+            tableSozlesmeler.Visible = false;
+        }
+
+        private void btnMusteriSil_Click(object sender, EventArgs e)
+        {
+            SqlCommand komut = new SqlCommand("DELETE From tbl_musteriler where mid=@p1", bgl.baglanti());
+            komut.Parameters.AddWithValue("@p1", txtMid.Text);
+            komut.ExecuteNonQuery();
+            MusteriListele();
+            MessageBox.Show("Müşteri Silindi");
+            
+        }
+
+        private void gridView7_FocusedRowChanged(object sender, DevExpress.XtraGrid.Views.Base.FocusedRowChangedEventArgs e)
+        {
+            DataRow dr = gridView7.GetDataRow(gridView7.FocusedRowHandle);
+            if (dr != null)
+            {
+                txtreziptalid.Text = dr[0].ToString();
+                richTextBox2.Text = dr[7].ToString();
+            }
+        }
+
+        private void btn_rezervasyoniptal_Click(object sender, EventArgs e)
+        {
+            SqlCommand komut = new SqlCommand("DELETE From tbl_rezervasyon where rezID=@p1", bgl.baglanti());
+            komut.Parameters.AddWithValue("@p1", txtreziptalid.Text);
+            komut.ExecuteNonQuery();
+            MessageBox.Show("Rezervasyon İptal Edildi");
+            RezervasyonOlustur();
+        }
+
+        private void comboAracDurum_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            labelControl50.Text = comboAracDurum.SelectedItem.ToString();
+        }
+
+        private void comboBox1_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            labelplakax.Text = comboBox1.SelectedItem.ToString();
+        }
+        private string dogruSifre = "123456"; // Doğru şifreyi buraya yazın
+        private void btnAracSil_Click(object sender, EventArgs e)
+        {
+            popupControlContainer1.ShowPopup(btnAracSil.PointToScreen(new Point(0, btnAracSil.Height)));
+
+            btnOnayla.Click += btnOnayla_Click;
+        }
+
+        private void comboBox3_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            label14.Text = comboBox3.SelectedItem.ToString();
+        }
+
+        private void btn_degerlendirmeYap_Click(object sender, EventArgs e)
+        {
+            SqlCommand komut2 = new SqlCommand("update tbl_degerlendirme set dDegerlendirme=@p1 where did=@p2", bgl.baglanti());
+            komut2.Parameters.AddWithValue("@p1", richTextBox1.Text);
+            komut2.Parameters.AddWithValue("@p2", txtdid.Text);
+            komut2.ExecuteNonQuery();
+            DegerlendirmeListele();
+        }
+
+        private void groupControl11_CustomButtonClick(object sender, DevExpress.XtraBars.Docking2010.BaseButtonEventArgs e)
+        {
+            MusteriListele();
+        }
+
+        private void simpleButton9_Click(object sender, EventArgs e)
+        {
+            groupControl12.Visible = true;
+            groupControl13.Visible = false;
+            groupDuzenle.Visible = false;
+        }
+
+        private void simpleButton7_Click(object sender, EventArgs e)
+        {
+            SqlCommand komutKasa = new SqlCommand("insert into tbl_kasa(kasaGider,kasaNot,kasaTarih) values(@p1,@p2,@p3)", bgl.baglanti());
+            komutKasa.Parameters.AddWithValue("@p1", textEditHarcama.Text);
+            komutKasa.Parameters.AddWithValue("@p2", textEditHarcamaNot.Text);
+            komutKasa.Parameters.AddWithValue("@p3", dateEdit3.EditValue);
+            komutKasa.ExecuteNonQuery();
+            MessageBox.Show("Gider Eklendi");
+            GelirGiderListele();
+            KasaListele();
+        }
+
+        private void simpleButton8_Click(object sender, EventArgs e)
+        {
+            groupControl13.Visible = true;
+            groupControl12.Visible = false;
+            groupDuzenle.Visible = false;
+        }
+
+        private void simpleButton10_Click(object sender, EventArgs e)
+        {
+            SqlCommand komutKasa = new SqlCommand("insert into tbl_kasa(kasaGelir,kasaNot,kasaTarih) values(@p1,@p2,@p3)", bgl.baglanti());
+            komutKasa.Parameters.AddWithValue("@p1", textEditGelir.Text);
+            komutKasa.Parameters.AddWithValue("@p2", textEditGelirNot.Text);
+            komutKasa.Parameters.AddWithValue("@p3", dateEdit4.EditValue);
+            komutKasa.ExecuteNonQuery();
+            MessageBox.Show("Gelir Eklendi");
+            GelirGiderListele();
+            KasaListele();
+        }
+        int gunSayisi;
+        private DataView dataView;
+
+        private void dateKiraDonus_EditValueChanged(object sender, EventArgs e)
+        {
+            DateTime tarih1 = DateTime.Parse(dateKiraCikis.EditValue.ToString());
+            DateTime tarih2 = DateTime.Parse(dateKiraDonus.EditValue.ToString());
+
+            TimeSpan fark = tarih2 - tarih1;
+            gunSayisi = fark.Days;
+            lblgunfarki.Text = gunSayisi.ToString() + " Gün";
+        }
+
+        private void button1_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private void simpleButton2_Click(object sender, EventArgs e)
+        {
+            groupMuafiyet.Visible = true;
+        }
+
+        private void simpleButton11_Click(object sender, EventArgs e)
+        {
+            groupMuafiyet.Visible = false;
+        }
+        private void simpleButton13_Click(object sender, EventArgs e)
+        {
+            DateTime secilenTarih = dateTimePicker3.Value.Date; // DateTimePicker'dan seçilen tarihi alıyoruz ve sadece tarih kısmını alıyoruz (saat kısmını atıyoruz).
+            DataTable dt = new DataTable();
+            SqlDataAdapter da = new SqlDataAdapter("SELECT kasaid,kasaTarih,kasaGelir,kredikart,kasaGider,kasaNot FROM tbl_kasa WHERE kasaTarih = @p1", bgl.baglanti()); // Veritabanından sadece seçilen tarihe ait kayıtları çekecek şekilde WHERE koşulu eklenmiştir.
+            da.SelectCommand.Parameters.AddWithValue("@p1", secilenTarih); // WHERE koşulundaki parametreye değer atanmaktadır.
+            da.Fill(dt);
+            gridControl6.DataSource = dt;
+            bgl.baglanti().Close();
+            GelirGiderListele();
+        }
+
+        private void labelControl29_Click(object sender, EventArgs e)
+        {
+
+        }
+
+        private void checkNakit_CheckedChanged(object sender, EventArgs e)
+        {
+            if (checkNakit.Checked==true)
+            {
+                checkKart.Checked = false;
+            }
+        }
+
+        private void checkKart_CheckedChanged(object sender, EventArgs e)
+        {
+            if (checkKart.Checked==true)
+            {
+                checkNakit.Checked = false;
+            }
+        }
+
+        private void simpleButton12_Click(object sender, EventArgs e)
+        {
+            SqlCommand komut = new SqlCommand("DELETE From tbl_kiralama where aracPlaka = @p1", bgl.baglanti());
+            komut.Parameters.AddWithValue("@p1", textEdit1.Text);
+            komut.ExecuteNonQuery();
+
+            SqlCommand komut2 = new SqlCommand("UPDATE tbl_araclar SET durum='Müsait' where plaka = @p2", bgl.baglanti());
+            komut2.Parameters.AddWithValue("@p2", textEdit1.Text);
+            komut2.ExecuteNonQuery();
+            MessageBox.Show("Kiralama iptal edildi kasa işlemlerinden güncelleme yapın.");
+            bgl.baglanti().Close();
+            AraclariListele();
+            GüncelTabloListele();
+        }
+
+        private void gridView6_FocusedRowChanged(object sender, DevExpress.XtraGrid.Views.Base.FocusedRowChangedEventArgs e)
+        {
+            DataRow dr = gridView6.GetDataRow(gridView6.FocusedRowHandle);
+            if (dr != null)
+            {
+                txtKasaid.Text = dr[0].ToString();
+                DateTime dateTime = (DateTime)dr[1];
+                dateKasaTarih.EditValue = dateTime.Date;
+                txtKasaGider.Text = dr[4].ToString();
+                txtKasaGelir.Text = dr[2].ToString();
+                txtKrediKart.Text = dr[3].ToString();
+                txtKasaNot.Text = dr[5].ToString();
+            }
+        }
+
+        private void btnKasaDuzenle_Click(object sender, EventArgs e)
+        {
+            SqlCommand komut = new SqlCommand("update tbl_kasa set kasaGider=@p1,kasaGelir=@p3,kredikart=@p4,kasaTarih=@p5,kasaNot=@p6 where kasaid=@p7", bgl.baglanti());
+            komut.Parameters.AddWithValue("@p1", txtKasaGider.Text);
+            komut.Parameters.AddWithValue("@p3", txtKasaGelir.Text);
+            komut.Parameters.AddWithValue("@p4", txtKrediKart.Text);
+            komut.Parameters.AddWithValue("@p5", dateKasaTarih.EditValue);
+            komut.Parameters.AddWithValue("@p6", txtKasaNot.Text);
+            komut.Parameters.AddWithValue("@p7", txtKasaid.Text);
+            komut.ExecuteNonQuery();
+            MessageBox.Show("Bilgiler düzenlendi.", "Bilgi", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            KasaListele();
+        }
+
+        private void btnKasaSil_Click(object sender, EventArgs e)
+        {
+            SqlCommand komut = new SqlCommand("DELETE From tbl_kasa where kasaid=@p1", bgl.baglanti());
+            komut.Parameters.AddWithValue("@p1", txtKasaid.Text);
+            komut.ExecuteNonQuery();
+            KasaListele();
+        }
+
+        private void btnKasaGirdiCikti_Click(object sender, EventArgs e)
+        {
+            groupControl12.Visible = false;
+            groupControl13.Visible = false;
+            groupDuzenle.Visible = true;
+        }
+
+        private void simpleButton14_Click(object sender, EventArgs e)
+        {
+            SqlCommand komutDegerlendirme = new SqlCommand("insert into tbl_blacklist(mid,adisoyadi,blacklistNot,plaka,tarih,fiyat)values(@p1,@p2,@p3,@p4,@p5,@p6)", bgl.baglanti());
+            komutDegerlendirme.Parameters.AddWithValue("@p1", dmidText.Text);
+            komutDegerlendirme.Parameters.AddWithValue("@p2", txtDadi.Text);
+            komutDegerlendirme.Parameters.AddWithValue("@p3", richTextBox1.Text);
+            komutDegerlendirme.Parameters.AddWithValue("@p4", txtDplaka.Text);
+            komutDegerlendirme.Parameters.AddWithValue("@p5", dateEdit5.EditValue);
+            komutDegerlendirme.Parameters.AddWithValue("@p6", txtDfiyat.Text);
+            komutDegerlendirme.ExecuteNonQuery();
+            bgl.baglanti().Close();
+            MessageBox.Show("Black List Eklendi.");
+            blackListLitele();
+        }
+
+        private void gridView10_FocusedRowChanged(object sender, DevExpress.XtraGrid.Views.Base.FocusedRowChangedEventArgs e)
+        {
+            DataRow dr = gridView10.GetDataRow(gridView10.FocusedRowHandle);
+            if (dr != null)
+            {
+                txtblid.Text = dr[0].ToString();
+                txtblAdisoyadi.Text = dr[3].ToString();
+                blrichtext.Text = dr[2].ToString();
+
+            }
+        }
+
+        private void simpleButton15_Click(object sender, EventArgs e)
+        {
+            SqlCommand komut = new SqlCommand("update tbl_blacklist set blacklistNot=@p1,adisoyadi=@p3 where blid=@p7", bgl.baglanti());
+            komut.Parameters.AddWithValue("@p1", blrichtext.Text);
+            komut.Parameters.AddWithValue("@p3", txtblAdisoyadi.Text);
+            komut.Parameters.AddWithValue("@p7", txtblid.Text);
+            komut.ExecuteNonQuery();
+            MessageBox.Show("Bilgiler düzenlendi.", "Bilgi", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            KasaListele();
+        }
+
+        private void simpleButton16_Click(object sender, EventArgs e)
+        {
+            SqlCommand komut = new SqlCommand("DELETE From tbl_blacklist where blid=@p1", bgl.baglanti());
+            komut.Parameters.AddWithValue("@p1", txtblid.Text);
+            komut.ExecuteNonQuery();
+            MessageBox.Show("Müşteri BlackListten kaldırıldı.");
+            KasaListele();
+        }
+
+        private void simpleButton17_Click(object sender, EventArgs e)
+        {
+            // TextBox'tan RaporId değerini alın
+            int raporId = Convert.ToInt32(txtRaporId.Text); // txtRaporId, RaporId'yi girdiğiniz TextBox'ın adıdır. Gerekirse uygun şekilde değiştirin.
+
+            // Veritabanından PDF verisini alın
+            byte[] pdfBytes;
+
+            using (SqlConnection connection = new SqlConnection("Data Source=193.164.5.55;user=sa;password=123456789Aa;Initial Catalog=rentacar;"))
+            {
+                connection.Open();
+
+                string query = "SELECT PdfData FROM tbl_raporlar WHERE RaporId = @raporId"; // RaporId'ye göre filtreleme yapın
+                SqlCommand command = new SqlCommand(query, connection);
+                command.Parameters.AddWithValue("@raporId", raporId);
+
+                pdfBytes = (byte[])command.ExecuteScalar();
+            }
+
+            // PDF'yi geçici bir dosyaya yaz
+            string tempFilePath = Path.GetTempFileName() + ".pdf";
+            File.WriteAllBytes(tempFilePath, pdfBytes);
+
+            // PDF'yi varsayılan PDF görüntüleyiciyle aç
+            Process.Start(tempFilePath);
+
+        }
+
+        private void gridView5_SelectionChanged(object sender, DevExpress.Data.SelectionChangedEventArgs e)
+        {
+            if (gridView5.SelectedRowsCount > 0)
+            {
+                int columnIndex = 0; // Seçilen kolonun sırasını belirtin (sıfırdan başlayarak)
+                object selectedCellValue = gridView5.GetFocusedRowCellValue(gridView5.Columns[columnIndex]);
+                string selectedValue = selectedCellValue != null ? selectedCellValue.ToString() : "";
+                textEdit1.Text = selectedValue;
+            }
+        }
+
+        private void gridView5_FocusedRowChanged(object sender, DevExpress.XtraGrid.Views.Base.FocusedRowChangedEventArgs e)
+        {
+            
+                if (gridView5.SelectedRowsCount > 0)
+                {
+                    int columnIndex = 0; // Seçilen kolonun sırasını belirtin (sıfırdan başlayarak)
+                    object selectedCellValue = gridView5.GetFocusedRowCellValue(gridView5.Columns[columnIndex]);
+                    string selectedValue = selectedCellValue != null ? selectedCellValue.ToString() : "";
+                    textEdit1.Text = selectedValue;
+                }
+            
+
+        }
+
+        private void barButtonItem6_ItemClick(object sender, DevExpress.XtraBars.ItemClickEventArgs e)
+        {
+            tableSozlesmeler.Visible = true;
+            tablePanelPlakaSorgu.Visible = false;
+            tableLayoutGuncelTablo.Visible = false;
+            tablePanel1.Visible = false;
+            tablePanel2.Visible = false;
+            tablePanel3.Visible = false;
+            tablePanelMusteriKayit.Visible = false;
+        }
+
+        private void simpleButton18_Click(object sender, EventArgs e)
+        {
+            DateTime secilenTarih = dateTimePicker1.Value.Date; // DateTimePicker'dan seçilen tarihi alıyoruz ve sadece tarih kısmını alıyoruz (saat kısmını atıyoruz).
+            DataTable dt = new DataTable();
+            SqlDataAdapter da = new SqlDataAdapter("SELECT RaporId,RaporAdi,PdfData,Tarih FROM tbl_raporlar WHERE Tarih = @p1", bgl.baglanti()); // Veritabanından sadece seçilen tarihe ait kayıtları çekecek şekilde WHERE koşulu eklenmiştir.
+            da.SelectCommand.Parameters.AddWithValue("@p1", secilenTarih); // WHERE koşulundaki parametreye değer atanmaktadır.
+            da.Fill(dt);
+            gridControl11.DataSource = dt;
+            bgl.baglanti().Close();
+        }
+
+        private void btnOnayla_Click(object sender, EventArgs e)
+        {
+            string girilenSifre = txtPassword.Text;
+
+            if (girilenSifre == dogruSifre)
+            {
+                SqlCommand komut = new SqlCommand("DELETE From tbl_araclar where aracid=@p1", bgl.baglanti());
+                komut.Parameters.AddWithValue("@p1", txtAracId.Text);
+                komut.ExecuteNonQuery();
+                AraclariListele();
+                MessageBox.Show("Araç Silindi");
+                popupControlContainer1.HidePopup();
+                txtPassword.Text = null;
+            }
+            else
+            {
+                XtraMessageBox.Show("Hatalı şifre! Silme işlemi yapılamadı.", "Hata", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                txtPassword.Text = null;
+            }
+
+            btnOnayla.Click -= btnOnayla_Click;
+        }
+
+        private void gridView4_FocusedRowChanged(object sender, DevExpress.XtraGrid.Views.Base.FocusedRowChangedEventArgs e)
+        {
+            DataRow dr = gridView4.GetDataRow(gridView4.FocusedRowHandle);
+            if (dr != null)
+            {
+                txtaracgiderId.Text = dr[1].ToString();
+                aracGiderKilometre.Text = dr[2].ToString();
+                aracGiderNot.Text = dr[3].ToString();
+                aracGiderFiyat.Text = dr[4].ToString();
+                DateTime dateTime = (DateTime)dr[5];
+                aracGiderTarih.EditValue = dateTime.Date;
+            }
+        }
+
+        private void btnAracGiderDuzenleD_Click(object sender, EventArgs e)
+        {
+            SqlCommand komut = new SqlCommand("update tbl_arac_gider set arac_gider_aciklama=@p1,arac_gider=@p2,arac_gider_tarih=@p3,arac_kilometre=@p4 where arac_gider_id=@p5", bgl.baglanti());
+            komut.Parameters.AddWithValue("@p1", aracGiderNot.Text);
+            komut.Parameters.AddWithValue("@p2", decimal.Parse(aracGiderFiyat.Text));
+            komut.Parameters.AddWithValue("@p3", aracGiderTarih.EditValue);
+            komut.Parameters.AddWithValue("@p4", aracGiderKilometre.Text);
+            komut.Parameters.AddWithValue("@p5", txtaracgiderId.Text);
+            komut.ExecuteNonQuery();
+            MessageBox.Show("Araç Bilgileri Güncellendi.", "Bilgi", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            AracGiderListele();
+        }
+
+        private void btnAracGiderSilD_Click(object sender, EventArgs e)
+        {
+            
+            popupControlContainer2.ShowPopup(btnAracGiderSilD.PointToScreen(new Point(0, btnAracGiderSilD.Height)));
+            btnOnayla2.Click += btnOnayla2_Click;
+        }
+
+        private void btnOnayla2_Click(object sender, EventArgs e)
+        {
+            string girilenSifre = textBox4.Text;
+
+            if (girilenSifre == dogruSifre)
+            {
+                SqlCommand komut = new SqlCommand("DELETE From tbl_arac_gider where arac_gider_id=@p1", bgl.baglanti());
+                komut.Parameters.AddWithValue("@p1", txtaracgiderId.Text);
+                komut.ExecuteNonQuery();
+                MessageBox.Show("İşlem Silindi");
+                popupControlContainer2.HidePopup();
+                AracGiderListele();
+            }
+            else
+            {
+                XtraMessageBox.Show("Hatalı şifre! Silme işlemi yapılamadı.", "Hata", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                textBox4.Text = null;
+            }
+
+            btnOnayla2.Click -= btnOnayla2_Click;
+        }
+
+        private void gridView3_RowCellClick(object sender, DevExpress.XtraGrid.Views.Grid.RowCellClickEventArgs e)
+        {
+            if (e.RowHandle >= 0)
+            {
+                DataRow dr = gridView3.GetDataRow(e.RowHandle);
+                if (dr != null)
+                {
+                    txtAracId.Text = dr[0].ToString();
+                    txt_AracModeli.Text = dr[1].ToString();
+                    lblAracModeli.Text = dr[1].ToString();
+                    txtAracPlaka.Text = dr[2].ToString();
+                    lblAracPlaka.Text = dr[2].ToString();
+                    comboAracDurum.Text = dr[3].ToString();
+                    txtAracFiyat.Text = dr[4].ToString();
+                    txtAracKilometre.Text = dr[5].ToString();
+
+                    DateTime dateTime = (DateTime)dr[6];
+                    dateTimeBakimTarihi.EditValue = dateTime.Date;
+                    AracGiderListele();
+                }
+            }
+        }
+    }
+}
